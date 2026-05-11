@@ -1,7 +1,7 @@
 const state = {
   topic:
     '以“未来城市”为主题，展示科技与人文共融的城市生活，画面要有电影感，包含无人驾驶交通、绿色建筑、智能交互与温暖的人文场景，整体风格希望未来感、温度感兼具。',
-  relayUrl: 'https://relay.example.com/v1/chat/completions',
+  relayUrl: 'http://127.0.0.1:4446/relay/v1/chat/completions',
   projectTitle: '未来城市宣传片',
   duration: 60,
   style: '电影级',
@@ -13,7 +13,12 @@ const state = {
   brief: '',
   payload: null,
   hyperframes: null,
+  generationSource: 'local',
+  generationError: '',
+  isGenerating: false,
 };
+
+const API_BASE = window.location.protocol === 'file:' ? 'http://127.0.0.1:4173' : '';
 
 const el = {
   topicInput: document.getElementById('topicInput'),
@@ -421,44 +426,117 @@ function syncForm() {
   updateMetaInfo();
 }
 
-function generate() {
+function buildLocalPlan(topic, meta) {
+  const projectTitle = generateTitleFromTopic(topic);
+  const scenes = buildScenes(topic, meta);
+  return {
+    projectTitle,
+    brief: buildBrief(topic, meta),
+    outline: buildOutline(topic, meta),
+    scenes,
+    payload: buildPayload(topic, meta, scenes),
+    hyperframes: buildHyperframesConfig(meta, scenes, projectTitle),
+  };
+}
+
+function applyPlan(plan, meta, source, errorMessage) {
+  state.projectTitle = plan.projectTitle;
+  state.brief = plan.brief;
+  state.outline = plan.outline;
+  state.scenes = plan.scenes;
+  state.payload = plan.payload;
+  state.hyperframes = plan.hyperframes;
+  state.generationSource = source || 'local';
+  state.generationError = errorMessage || '';
+  state.generationCount += 1;
+  state.style = meta.style;
+  state.audience = meta.audience;
+  state.ratio = meta.ratio;
+  state.duration = meta.duration;
+  el.styleSelect.value = state.style;
+  el.audienceSelect.value = state.audience;
+  el.ratioSelect.value = state.ratio;
+}
+
+function setGenerationBusy(isBusy, text) {
+  state.isGenerating = isBusy;
+  el.saveState.textContent = text || (isBusy ? '生成中' : '已保存');
+  document.getElementById('generateBtn').disabled = isBusy;
+  document.getElementById('generateTopBtn').disabled = isBusy;
+  document.getElementById('optimizeBtn').disabled = isBusy;
+}
+
+function buildGenerationRequest(topic, meta) {
+  return {
+    topic,
+    duration: meta.duration,
+    style: meta.style,
+    audience: meta.audience,
+    ratio: meta.ratio,
+    relayUrl: state.relayUrl,
+  };
+}
+
+async function requestRemotePlan(requestBody) {
+  const response = await fetch(`${API_BASE}/api/generate`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(requestBody),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || `Request failed with ${response.status}`);
+  }
+  return data;
+}
+
+async function generate() {
   const topic = (el.topicInput.value || '').trim();
   state.topic = topic || '请输入一个视频主题';
   state.duration = Number(el.durationSelect.value);
   state.style = inferStyle(state.topic, el.styleSelect.value);
   state.audience = inferAudience(state.topic, el.audienceSelect.value);
   state.ratio = el.ratioSelect.value;
-  const complexity = inferComplexity(state.topic);
-  const tone = inferTone(state.topic);
-  const motif = inferVisualMotif(state.topic);
   const meta = {
-    complexity,
-    tone,
-    motif,
+    complexity: inferComplexity(state.topic),
+    tone: inferTone(state.topic),
+    motif: inferVisualMotif(state.topic),
     audience: state.audience,
     duration: state.duration,
     style: state.style,
     ratio: state.ratio,
   };
 
-  state.projectTitle = generateTitleFromTopic(state.topic);
-  state.brief = buildBrief(state.topic, meta);
-  state.outline = buildOutline(state.topic, meta);
-  state.scenes = buildScenes(state.topic, meta);
-  state.payload = buildPayload(state.topic, meta, state.scenes);
-  state.hyperframes = buildHyperframesConfig(meta, state.scenes, state.projectTitle);
-  state.generationCount += 1;
-
-  el.styleSelect.value = state.style;
-  el.audienceSelect.value = state.audience;
+  const localPlan = buildLocalPlan(state.topic, meta);
+  setGenerationBusy(true, '生成中');
   el.relayUrlLabel.textContent = state.relayUrl;
+  applyPlan(localPlan, meta, 'local_preview', '');
   updateMetaInfo();
   renderScenarios();
-  flashSaveState();
+  setGenerationBusy(false, '已保存');
+  flashSaveState('本地预览');
+
+  requestRemotePlan(buildGenerationRequest(state.topic, meta))
+    .then((remote) => {
+      const plan = remote?.plan || localPlan;
+      applyPlan(plan, meta, remote?.source || 'local', remote?.error || '');
+      el.relayUrlLabel.textContent = remote?.relay?.url || state.relayUrl;
+      updateMetaInfo();
+      renderScenarios();
+      flashSaveState(remote?.source === 'relay' ? '已连接 cc-relay' : '本地回退');
+    })
+    .catch((error) => {
+      applyPlan(localPlan, meta, 'local_fallback', error instanceof Error ? error.message : String(error));
+      updateMetaInfo();
+      renderScenarios();
+      flashSaveState('本地回退');
+    });
 }
 
-function flashSaveState() {
-  el.saveState.textContent = '已保存';
+function flashSaveState(text) {
+  el.saveState.textContent = text || (state.generationSource === 'relay' ? '已保存 · cc-relay' : '已保存');
   el.saveState.classList.add('btn-success');
   window.setTimeout(() => {
     el.saveState.classList.remove('btn-success');

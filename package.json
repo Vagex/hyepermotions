@@ -1,0 +1,9 @@
+{
+  "name": "visora-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI video generation workspace with cc-relay and HyperFrames integration",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
