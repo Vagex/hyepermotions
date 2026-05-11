@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Visora AI - 视频自动生成工作台</title>
+    <meta
+      name="description"
+      content="输入主题，自动提炼视频提纲、分镜脚本、cc-relay 请求体与 HyperFrames 生成配置。"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+    <script defer src="./app.js"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">◢</div>
+          <div>
+            <div class="brand-name">Visora AI</div>
+            <div class="brand-sub">AI 视频创作平台</div>
+          </div>
+        </div>
+
+        <button class="new-project" type="button" id="newProjectBtn">+ 新建项目</button>
+
+        <nav class="nav">
+          <button class="nav-item active" type="button">工作台</button>
+          <button class="nav-item" type="button">项目</button>
+          <button class="nav-item" type="button">模板库</button>
+          <button class="nav-item" type="button">素材库</button>
+          <button class="nav-item" type="button">AI 工具</button>
+        </nav>
+
+        <section class="history">
+          <div class="section-label">历史记录</div>
+          <div class="history-list" id="historyList"></div>
+        </section>
+
+        <section class="quota">
+          <div class="quota-top">
+            <span>Pro 专业版</span>
+            <span id="quotaLabel">12h 30m</span>
+          </div>
+          <div class="quota-bar">
+            <span id="quotaFill"></span>
+          </div>
+          <p>剩余生成时长</p>
+        </section>
+
+        <div class="profile">
+          <div class="avatar">林</div>
+          <div class="profile-meta">
+            <strong>林知远</strong>
+            <span>内容策略师</span>
+          </div>
+          <span class="gear">⚙</span>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div class="project-title">
+            <h1 id="projectTitle">未来城市宣传片</h1>
+            <button class="icon-btn" id="renameBtn" type="button" aria-label="重命名项目">✎</button>
+            <span class="status-pill" id="saveState">未保存</span>
+          </div>
+          <div class="top-actions">
+            <span class="auto-save" id="autoSaveState">已自动保存 14:32</span>
+            <button class="ghost-btn" type="button" id="exportBtn">导出</button>
+            <button class="primary-btn" type="button" id="generateTopBtn">生成视频</button>
+          </div>
+        </header>
+
+        <section class="canvas">
+          <div class="main-column">
+            <article class="panel panel-hero">
+              <div class="panel-head">
+                <div>
+                  <h2>输入主题或需求，AI 帮你生成视频</h2>
+                  <p>自动提炼成 brief、提纲、分镜、旁白和 HyperFrames 可执行结构。</p>
+                </div>
+                <button class="mini-btn" type="button" id="optimizeBtn">智能优化</button>
+              </div>
+
+              <label class="topic-box">
+                <textarea
+                  id="topicInput"
+                  rows="6"
+                  placeholder="例如：以“未来城市”为主题，展示科技与人文共融的城市生活，画面要有电影感、无人驾驶交通、绿色建筑、智能交互和温暖的人文场景。"
+                ></textarea>
+                <div class="topic-footer">
+                  <span>结构化输入更适合复杂主题，也支持一句话灵感。</span>
+                  <span id="charCount">0/1000</span>
+                </div>
+              </label>
+
+              <div class="smart-chips">
+                <button class="chip" type="button">智能优化</button>
+                <button class="chip" type="button">生成标题</button>
+                <button class="chip" type="button">拆分分镜</button>
+                <button class="chip" type="button">补充旁白</button>
+              </div>
+
+              <div class="form-row">
+                <label>
+                  <span>时长</span>
+                  <select id="durationSelect">
+                    <option value="30">30 秒</option>
+                    <option value="45">45 秒</option>
+                    <option value="60" selected>60 秒</option>
+                    <option value="90">90 秒</option>
+                  </select>
+                </label>
+                <label>
+                  <span>风格</span>
+                  <select id="styleSelect">
+                    <option value="电影级" selected>电影级</option>
+                    <option value="科技感">科技感</option>
+                    <option value="纪实感">纪实感</option>
+                    <option value="品牌广告">品牌广告</option>
+                    <option value="知识科普">知识科普</option>
+                  </select>
+                </label>
+                <label>
+                  <span>受众</span>
+                  <select id="audienceSelect">
+                    <option value="大众观众" selected>大众观众</option>
+                    <option value="创业者">创业者</option>
+                    <option value="职场人">职场人</option>
+                    <option value="品牌客户">品牌客户</option>
+                    <option value="学生">学生</option>
+                  </select>
+                </label>
+                <label>
+                  <span>画幅比例</span>
+                  <select id="ratioSelect">
+                    <option value="16:9" selected>16:9</option>
+                    <option value="9:16">9:16</option>
+                    <option value="1:1">1:1</option>
+                  </select>
+                </label>
+              </div>
+
+              <div class="relay-card">
+                <div>
+                  <span>cc-relay 中转 API</span>
+                  <strong id="relayUrlLabel">https://relay.example.com/v1/chat/completions</strong>
+                </div>
+                <button class="ghost-btn small" type="button" id="editRelayBtn">配置</button>
+              </div>
+
+              <div class="cta-row">
+                <button class="primary-btn wide" type="button" id="generateBtn">生成视频</button>
+                <span class="credit-note">消耗 60 积分</span>
+              </div>
+            </article>
+
+            <article class="panel preview-panel">
+              <div class="preview-tabs">
+                <button class="tab active" type="button">视频预览</button>
+                <button class="tab" type="button">脚本</button>
+                <button class="tab" type="button">配音</button>
+                <button class="tab" type="button">音乐</button>
+              </div>
+
+              <div class="preview-stage">
+                <div class="scene-copy">
+                  <span id="previewTag">科技 · 绿色 · 人文 · 希望</span>
+                  <h3 id="previewHeadline">在科技与人文的共融中，未来城市正向我们走来</h3>
+                </div>
+                <div class="scene-media">
+                  <div class="scene-skyline"></div>
+                  <div class="scene-overlay"></div>
+                  <div class="scene-subtitles" id="previewSubtitle">科技向前，生活向暖。</div>
+                  <div class="scene-progress">
+                    <span></span>
+                  </div>
+                  <div class="scene-controls">
+                    <button type="button" aria-label="播放">▶</button>
+                    <button type="button" aria-label="音量">◉</button>
+                    <span id="previewTime">00:04 / 01:00</span>
+                    <span class="spacer"></span>
+                    <button type="button" aria-label="倍率">1.0x</button>
+                    <button type="button" aria-label="字幕">CC</button>
+                    <button type="button" aria-label="设置">⚙</button>
+                    <button type="button" aria-label="全屏">⤢</button>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <aside class="inspector">
+            <div class="inspector-tabs">
+              <button class="tab active" type="button">AI 生成方案</button>
+              <button class="tab" type="button">大纲</button>
+              <button class="tab" type="button">场景列表</button>
+            </div>
+
+            <article class="info-card">
+              <div class="card-title">
+                <h3>视频创意简述</h3>
+                <button class="copy-btn" type="button" data-copy="brief">复制</button>
+              </div>
+              <p id="briefText"></p>
+            </article>
+
+            <article class="info-card">
+              <div class="card-title">
+                <h3>视频大纲</h3>
+                <button class="copy-btn" type="button" data-copy="outline">复制</button>
+              </div>
+              <ol class="outline-list" id="outlineList"></ol>
+            </article>
+
+            <article class="info-card scenes-card">
+              <div class="card-title">
+                <h3>场景列表 <span id="sceneCountLabel">(3)</span></h3>
+                <button class="mini-btn small" type="button" id="addSceneBtn">+ 添加场景</button>
+              </div>
+              <div class="scenes" id="sceneList"></div>
+              <p class="footnote">以上内容由 AI 生成，仅供参考</p>
+            </article>
+
+            <article class="info-card relay-preview">
+              <div class="card-title">
+                <h3>cc-relay 请求体</h3>
+                <button class="copy-btn" type="button" data-copy="payload">复制 JSON</button>
+              </div>
+              <pre id="payloadText"></pre>
+            </article>
+
+            <article class="info-card relay-preview">
+              <div class="card-title">
+                <h3>HyperFrames 生成参数</h3>
+                <button class="copy-btn" type="button" data-copy="hyperframes">复制</button>
+              </div>
+              <pre id="hyperframesText"></pre>
+            </article>
+          </aside>
+        </section>
+      </main>
+    </div>
+
+    <template id="historyItemTpl">
+      <button class="history-item" type="button">
+        <div class="history-thumb"></div>
+        <div class="history-meta">
+          <strong></strong>
+          <span></span>
+        </div>
+      </button>
+    </template>
+  </body>
+</html>
