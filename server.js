@@ -357,6 +357,7 @@ function buildLocalPlan(input) {
     storyboard: scenes,
     payload,
     hyperframes: buildHyperframesConfig(meta, scenes, projectTitle),
+    hyperframesHtml: buildHyperframesHtml(meta, scenes, projectTitle),
     relay: {
       mode: 'local',
       url: input.relayUrl || DEFAULT_RELAY_URL || '',
@@ -384,6 +385,240 @@ function buildHyperframesConfig(meta, scenes, projectTitle) {
   };
 }
 
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function parseSceneRange(scene, index, duration) {
+  const numbers = String(scene.timingLabel || scene.duration || '').match(/\d+/g);
+  if (numbers && numbers.length >= 2) {
+    return {
+      start: Number(numbers[0]),
+      end: Number(numbers[1]),
+    };
+  }
+  const count = Math.max(1, index + 1);
+  const sceneDuration = Math.max(1, Math.floor(duration / count));
+  return {
+    start: index * sceneDuration,
+    end: Math.min(duration, (index + 1) * sceneDuration),
+  };
+}
+
+function buildHyperframesHtml(meta, scenes, projectTitle) {
+  const width = meta.ratio === '9:16' ? 1080 : meta.ratio === '1:1' ? 1080 : 1920;
+  const height = meta.ratio === '9:16' ? 1920 : 1080;
+  const palette = meta.style.includes('科技')
+    ? {
+        bg: '#07111f',
+        surface: '#0f1d33',
+        accent: '#63e6d4',
+        text: '#eef5ff',
+        muted: '#96a6c6',
+      }
+    : {
+        bg: '#0b0f16',
+        surface: '#151b26',
+        accent: '#63e6d4',
+        text: '#f3f6fb',
+        muted: '#98a5bc',
+      };
+
+  const sceneBlocks = scenes
+    .map((scene, index) => {
+      const range = parseSceneRange(scene, index, meta.duration);
+      const title = escapeHtml(scene.title);
+      const voiceover = escapeHtml(scene.voiceover);
+      const visual = escapeHtml(scene.visual);
+      return `
+      <article
+        class="scene-card"
+        id="scene-${index + 1}"
+        data-start="${range.start}"
+        data-duration="${Math.max(1, range.end - range.start)}"
+        data-track-index="${index}"
+      >
+        <div class="scene-index">${String(index + 1).padStart(2, '0')}</div>
+        <div class="scene-copy">
+          <p class="scene-label">分镜 ${String(index + 1).padStart(2, '0')}</p>
+          <h2>${title}</h2>
+          <p class="scene-voice">${voiceover}</p>
+          <p class="scene-visual">${visual}</p>
+        </div>
+      </article>`;
+    })
+    .join('\n');
+
+  const timelineSteps = scenes
+    .map((scene, index) => {
+      const range = parseSceneRange(scene, index, meta.duration);
+      return `tl.fromTo('#scene-${index + 1}', { opacity: 0, y: 24, scale: 0.98 }, { opacity: 1, y: 0, scale: 1, duration: 0.55, ease: 'power2.out' }, ${range.start});`;
+    })
+    .join('\n      ');
+
+  return `<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapeHtml(projectTitle)} - HyperFrames Draft</title>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: ${palette.bg};
+      color: ${palette.text};
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      overflow: hidden;
+    }
+    [data-composition-id="main-video"] {
+      position: relative;
+      width: ${width}px;
+      height: ${height}px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at top left, rgba(99, 230, 212, 0.18), transparent 36%),
+        linear-gradient(180deg, ${palette.bg}, #050814 100%);
+    }
+    .scene-layer {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 64px;
+      box-sizing: border-box;
+    }
+    .hero-copy {
+      position: absolute;
+      top: 54px;
+      left: 64px;
+      right: 64px;
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      align-items: flex-start;
+      z-index: 2;
+    }
+    .hero-copy h1 {
+      margin: 0;
+      font-size: ${meta.ratio === '9:16' ? 50 : 58}px;
+      line-height: 1.02;
+      letter-spacing: -0.04em;
+      max-width: ${meta.ratio === '9:16' ? 720 : 920}px;
+    }
+    .hero-copy p {
+      margin: 10px 0 0;
+      color: ${palette.muted};
+      font-size: ${meta.ratio === '9:16' ? 18 : 20}px;
+      line-height: 1.55;
+      max-width: ${meta.ratio === '9:16' ? 620 : 680}px;
+    }
+    .hero-chip {
+      padding: 12px 16px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: ${palette.accent};
+      font-size: 14px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .scene-stack {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      justify-content: flex-end;
+      box-sizing: border-box;
+      padding-top: 160px;
+    }
+    .scene-card {
+      display: grid;
+      grid-template-columns: 72px 1fr;
+      gap: 20px;
+      align-items: stretch;
+      padding: 20px;
+      border-radius: 28px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 22px 50px rgba(0, 0, 0, 0.24);
+    }
+    .scene-index {
+      display: grid;
+      place-items: center;
+      border-radius: 20px;
+      background: rgba(99, 230, 212, 0.14);
+      color: ${palette.accent};
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+    }
+    .scene-copy {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .scene-label {
+      margin: 0;
+      color: ${palette.accent};
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .scene-copy h2 {
+      margin: 0;
+      font-size: ${meta.ratio === '9:16' ? 34 : 40}px;
+      line-height: 1.08;
+      letter-spacing: -0.03em;
+    }
+    .scene-voice,
+    .scene-visual {
+      margin: 0;
+      color: ${palette.muted};
+      font-size: 16px;
+      line-height: 1.6;
+    }
+    .scene-visual {
+      color: rgba(255,255,255,0.82);
+    }
+  </style>
+</head>
+<body>
+  <div data-composition-id="main-video" data-width="${width}" data-height="${height}" data-duration="${meta.duration}" data-start="0">
+    <div class="scene-layer">
+      <div class="hero-copy">
+        <div>
+          <h1>${escapeHtml(projectTitle)}</h1>
+          <p>${escapeHtml(meta.style)} · ${escapeHtml(meta.audience)} · ${meta.duration}s · 这是一份可直接交给 HyperFrames 的分镜 composition 草案。</p>
+        </div>
+        <div class="hero-chip">${escapeHtml(meta.motif)}</div>
+      </div>
+      <div class="scene-stack">
+        ${sceneBlocks}
+      </div>
+    </div>
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true, defaults: { ease: 'power2.out' } });
+      ${timelineSteps}
+      window.__timelines['main-video'] = tl;
+    </script>
+  </div>
+</body>
+</html>`;
+}
+
 function resolveRelayUrl(input) {
   const raw = (input.relayUrl || DEFAULT_RELAY_URL || '').trim();
   if (!raw || raw === 'https://relay.example.com/v1/chat/completions') return '';
@@ -408,7 +643,7 @@ function buildRelayPrompt(input, localPlan) {
     {
       role: 'system',
       content:
-        '你是一个在线视频自动生成策划引擎。请只输出严格 JSON，不要代码块，不要额外解释。JSON 必须包含 projectTitle, brief, outline, scenes, hyperframes, meta。',
+        '你是一个在线视频自动生成策划引擎。请只输出严格 JSON，不要代码块，不要额外解释。JSON 必须包含 projectTitle, brief, outline, scenes, storyboard, hyperframes, hyperframesHtml, meta。',
     },
     {
       role: 'user',
@@ -434,6 +669,7 @@ function buildRelayPrompt(input, localPlan) {
                 timingLabel: 'string',
               },
             ],
+            storyboard: 'same as scenes, but may include any cleaned-up editorial ordering',
             hyperframes: {
               compositionId: 'string',
               width: 'number',
@@ -451,6 +687,7 @@ function buildRelayPrompt(input, localPlan) {
                 },
               ],
             },
+            hyperframesHtml: 'standalone HyperFrames composition HTML string',
             meta: localPlan.meta,
           },
           baseline: localPlan,
@@ -541,6 +778,10 @@ function normalizePlan(plan, fallback) {
     storyboard: Array.isArray(plan.storyboard) && plan.storyboard.length ? plan.storyboard : scenes,
     payload: fallback.payload,
     hyperframes: hyperframes || fallback.hyperframes,
+    hyperframesHtml:
+      typeof plan.hyperframesHtml === 'string' && plan.hyperframesHtml.trim()
+        ? plan.hyperframesHtml
+        : fallback.hyperframesHtml,
     meta: {
       ...fallback.meta,
       ...(plan.meta && typeof plan.meta === 'object' ? plan.meta : {}),
@@ -596,10 +837,11 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'POST' && url.pathname === '/api/generate') {
+    let input = null;
     try {
       const body = await readBody(req);
       const topic = String(body.topic || '').trim();
-      const input = {
+      input = {
         topic,
         duration: Number(body.duration || 60),
         style: String(body.style || '电影级'),
@@ -616,8 +858,23 @@ const server = http.createServer(async (req, res) => {
       const result = await proxyToRelay(input);
       json(res, 200, result);
     } catch (error) {
-      json(res, 500, {
+      const fallbackInput =
+        input || {
+          topic: '',
+          duration: 60,
+          style: '电影级',
+          audience: '大众观众',
+          ratio: '16:9',
+          relayUrl: DEFAULT_RELAY_URL,
+        };
+      json(res, 200, {
         ok: false,
+        source: 'local_fallback',
+        relay: {
+          enabled: Boolean(resolveRelayUrl(fallbackInput)),
+          url: resolveRelayUrl(fallbackInput),
+        },
+        plan: buildLocalPlan(fallbackInput),
         error: error instanceof Error ? error.message : String(error),
       });
     }

@@ -4,15 +4,16 @@
 
 ## 功能
 
-- 输入主题并自动提炼成 brief
-- 自动生成视频大纲和场景列表
+- 输入主题后自动提炼 brief
+- 自动生成分镜大纲和场景列表
 - 通过本地 `cc-relay` 代理请求真实模型
 - 生成 `HyperFrames` 配置预览
+- 生成可导出的 `HyperFrames` HTML composition 草案
 - 支持主题优化、场景追加、项目重命名、JSON 导出
 
 ## 启动
 
-1. 先确认你的 `cc-relay` 已运行在 `http://127.0.0.1:4446`
+1. 确认你的 `cc-relay` 已运行在 `http://127.0.0.1:4446`
 2. 启动本地前端代理和静态站点：
 
 ```bash
@@ -23,7 +24,7 @@ node server.js
 
 ## cc-relay 地址
 
-前端默认会使用：
+前端默认使用：
 
 ```text
 http://127.0.0.1:4446/relay/v1/chat/completions
