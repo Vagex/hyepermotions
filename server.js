@@ -699,6 +699,30 @@ function buildRelayPrompt(input, localPlan) {
   ];
 }
 
+function buildStoryboardRelayPrompt(input, localPlan) {
+  return [
+    {
+      role: 'system',
+      content:
+        'You are a storyboard planner for short-form video. Return STRICT JSON only, with no markdown, no code fences, and no commentary. Required fields: projectTitle, brief, outline, scenes, storyboard, meta. scenes and storyboard must be arrays of 4 to 6 items, each item containing index, title, duration, voiceover, visual, badge, and timingLabel.',
+    },
+    {
+      role: 'user',
+      content: JSON.stringify(
+        {
+          topic: input.topic,
+          duration: input.duration,
+          style: input.style,
+          audience: input.audience,
+          ratio: input.ratio,
+        },
+        null,
+        2,
+      ),
+    },
+  ];
+}
+
 async function proxyToRelay(input) {
   const relayUrl = resolveRelayUrl(input);
   const localPlan = buildLocalPlan(input);
@@ -712,7 +736,7 @@ async function proxyToRelay(input) {
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 60000);
+  const timeout = setTimeout(() => controller.abort(), 120000);
   try {
     const response = await fetch(relayUrl, {
       method: 'POST',
@@ -723,7 +747,7 @@ async function proxyToRelay(input) {
       body: JSON.stringify({
         model: DEFAULT_MODEL,
         temperature: 0.4,
-        messages: buildRelayPrompt(input, localPlan),
+        messages: buildStoryboardRelayPrompt(input, localPlan),
       }),
       signal: controller.signal,
     });
@@ -768,24 +792,29 @@ async function proxyToRelay(input) {
 function normalizePlan(plan, fallback) {
   if (!plan || typeof plan !== 'object') return fallback;
   const scenes = Array.isArray(plan.scenes) && plan.scenes.length ? plan.scenes : fallback.scenes;
+  const title = plan.projectTitle || fallback.projectTitle;
+  const meta = {
+    ...fallback.meta,
+    ...(plan.meta && typeof plan.meta === 'object' ? plan.meta : {}),
+  };
   const hyperframes =
-    plan.hyperframes && typeof plan.hyperframes === 'object' ? plan.hyperframes : fallback.hyperframes;
+    plan.hyperframes && typeof plan.hyperframes === 'object'
+      ? plan.hyperframes
+      : buildHyperframesConfig(meta, scenes, title);
+  const hyperframesHtml =
+    typeof plan.hyperframesHtml === 'string' && plan.hyperframesHtml.trim()
+      ? plan.hyperframesHtml
+      : buildHyperframesHtml(meta, scenes, title);
   return {
-    projectTitle: plan.projectTitle || fallback.projectTitle,
+    projectTitle: title,
     brief: plan.brief || fallback.brief,
     outline: Array.isArray(plan.outline) && plan.outline.length ? plan.outline : fallback.outline,
     scenes,
     storyboard: Array.isArray(plan.storyboard) && plan.storyboard.length ? plan.storyboard : scenes,
     payload: fallback.payload,
-    hyperframes: hyperframes || fallback.hyperframes,
-    hyperframesHtml:
-      typeof plan.hyperframesHtml === 'string' && plan.hyperframesHtml.trim()
-        ? plan.hyperframesHtml
-        : fallback.hyperframesHtml,
-    meta: {
-      ...fallback.meta,
-      ...(plan.meta && typeof plan.meta === 'object' ? plan.meta : {}),
-    },
+    hyperframes,
+    hyperframesHtml,
+    meta,
     relay: fallback.relay,
   };
 }
