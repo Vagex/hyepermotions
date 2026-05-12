@@ -50,6 +50,9 @@ const el = {
   workflowMessage: document.getElementById('workflowMessage'),
   workflowMini: document.getElementById('workflowMini'),
   workflowSummaryText: document.getElementById('workflowSummaryText'),
+  workflowSourceBadge: document.getElementById('workflowSourceBadge'),
+  sceneSourceBadge: document.getElementById('sceneSourceBadge'),
+  hyperframesSourceBadge: document.getElementById('hyperframesSourceBadge'),
   workflowTrack: document.getElementById('workflowTrack'),
   historyList: document.getElementById('historyList'),
   saveState: document.getElementById('saveState'),
@@ -691,6 +694,7 @@ function renderScenarios() {
   }, state.scenes, state.projectTitle);
   el.hyperframesText.textContent = state.hyperframesHtml;
   updateWorkflowUI();
+  updateSourceBadges();
 }
 
 function syncForm() {
@@ -766,6 +770,7 @@ function updateWorkflowUI() {
     node.classList.toggle('is-active', stage === state.workflowStage);
     node.classList.toggle('is-complete', index > -1 && index < activeIndex);
   });
+  updateSourceBadges();
 }
 
 function setWorkflowStage(stage, detail = {}) {
@@ -774,6 +779,27 @@ function setWorkflowStage(stage, detail = {}) {
   state.workflowHeadline = detail.headline || config.headline;
   state.workflowMessage = detail.message || config.message;
   updateWorkflowUI();
+}
+
+function updateSourceBadges() {
+  const label =
+    state.generationSource === 'relay'
+      ? '来源：cc-relay 回填'
+      : state.generationSource === 'local_fallback'
+        ? '来源：本地草案（relay 失败，未回填 cc-relay）'
+        : state.generationSource === 'local_preview'
+          ? '来源：本地草案（本地预览，未回填 cc-relay）'
+          : state.generationSource === 'local'
+            ? '来源：本地草案'
+            : '来源：待生成';
+
+  if (el.workflowSummaryText) {
+    const count = state.scenes.length;
+    el.workflowSummaryText.textContent = `${label}。当前已生成 ${count} 个分镜卡片。`;
+  }
+  if (el.workflowSourceBadge) el.workflowSourceBadge.textContent = label;
+  if (el.sceneSourceBadge) el.sceneSourceBadge.textContent = label;
+  if (el.hyperframesSourceBadge) el.hyperframesSourceBadge.textContent = label;
 }
 
 function setGenerationBusy(isBusy, text) {

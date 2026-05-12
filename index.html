@@ -236,6 +236,7 @@
             <article class="info-card workflow-summary">
               <div class="card-title">
                 <h3>当前步骤</h3>
+                <span class="workflow-source" id="workflowSourceBadge">来源：本地草案</span>
                 <span class="workflow-mini" id="workflowMini">输入需求</span>
               </div>
               <p id="workflowSummaryText">等待输入需求，之后会先生成 brief，再拆成分镜。</p>
@@ -260,6 +261,7 @@
             <article class="info-card scenes-card">
               <div class="card-title">
                 <h3>分镜卡片 <span id="sceneCountLabel">(3)</span></h3>
+                <span class="workflow-source" id="sceneSourceBadge">来源：本地草案</span>
                 <button class="mini-btn small" type="button" id="addSceneBtn">+ 添加场景</button>
               </div>
               <div class="scenes" id="sceneList"></div>
@@ -277,6 +279,7 @@
             <article class="info-card relay-preview">
               <div class="card-title">
                 <h3>HyperFrames HTML</h3>
+                <span class="workflow-source" id="hyperframesSourceBadge">来源：本地草案</span>
                 <button class="mini-btn small" type="button" id="downloadHyperframesBtn">下载 HTML</button>
                 <button class="copy-btn" type="button" data-copy="hyperframes">复制 HTML</button>
               </div>
