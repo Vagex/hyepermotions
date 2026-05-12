@@ -419,6 +419,124 @@ button {
   line-height: 1.6;
 }
 
+.workflow-card {
+  margin: 0 0 18px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(99, 230, 212, 0.08), rgba(255, 255, 255, 0.02)),
+    rgba(255, 255, 255, 0.03);
+}
+
+.workflow-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.workflow-kicker {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.workflow-top strong {
+  display: block;
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.workflow-pill {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(99, 230, 212, 0.12);
+  border: 1px solid rgba(99, 230, 212, 0.28);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.workflow-track {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.workflow-step {
+  position: relative;
+  min-height: 122px;
+  padding: 14px 12px 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+  overflow: hidden;
+}
+
+.workflow-step span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  margin-bottom: 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.workflow-step strong {
+  display: block;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.35;
+  margin-bottom: 8px;
+}
+
+.workflow-step small {
+  display: block;
+  line-height: 1.5;
+}
+
+.workflow-step.is-active {
+  color: var(--text);
+  border-color: rgba(99, 230, 212, 0.42);
+  background: linear-gradient(180deg, rgba(99, 230, 212, 0.16), rgba(255, 255, 255, 0.03));
+  box-shadow: 0 14px 34px rgba(3, 8, 18, 0.24);
+}
+
+.workflow-step.is-active span {
+  background: rgba(99, 230, 212, 0.2);
+  color: var(--accent);
+}
+
+.workflow-step.is-complete {
+  border-color: rgba(99, 230, 212, 0.22);
+  background: rgba(99, 230, 212, 0.06);
+}
+
+.workflow-step.is-complete span {
+  background: rgba(99, 230, 212, 0.14);
+  color: var(--accent);
+}
+
+.workflow-note {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
 .topic-box {
   display: block;
 }

@@ -9,10 +9,14 @@ const state = {
   ratio: '16:9',
   generationCount: 0,
   scenes: [],
+  storyboard: [],
   outline: [],
   brief: '',
   payload: null,
   hyperframes: null,
+  workflowStage: 'input',
+  workflowHeadline: '等待输入需求',
+  workflowMessage: '输入主题后，系统会先提炼 brief，再生成分镜草案，最后整理成 HyperFrames 前置结构。',
   generationSource: 'local',
   generationError: '',
   isGenerating: false,
@@ -39,11 +43,44 @@ const el = {
   sceneCountLabel: document.getElementById('sceneCountLabel'),
   projectTitle: document.getElementById('projectTitle'),
   relayUrlLabel: document.getElementById('relayUrlLabel'),
+  workflowHeadline: document.getElementById('workflowHeadline'),
+  workflowStepPill: document.getElementById('workflowStepPill'),
+  workflowMessage: document.getElementById('workflowMessage'),
+  workflowMini: document.getElementById('workflowMini'),
+  workflowSummaryText: document.getElementById('workflowSummaryText'),
+  workflowTrack: document.getElementById('workflowTrack'),
   historyList: document.getElementById('historyList'),
   saveState: document.getElementById('saveState'),
   autoSaveState: document.getElementById('autoSaveState'),
   quotaLabel: document.getElementById('quotaLabel'),
   quotaFill: document.getElementById('quotaFill'),
+};
+
+const workflowLabels = {
+  input: {
+    pill: '输入需求',
+    headline: '等待输入需求',
+    mini: '输入需求',
+    message: '输入主题后，系统会先提炼 brief，再生成分镜草案，最后整理成 HyperFrames 前置结构。',
+  },
+  brief: {
+    pill: '需求提炼',
+    headline: '正在提炼需求',
+    mini: '需求提炼',
+    message: '系统正在把主题压缩成 brief、目标受众、风格和表达重点，确保后续分镜可执行。',
+  },
+  storyboard: {
+    pill: '生成分镜',
+    headline: '已生成分镜草案',
+    mini: '生成分镜',
+    message: '当前内容已经拆成分镜卡片，用户可以直接看到每一镜的画面、旁白与节奏。',
+  },
+  hyperframes: {
+    pill: 'HyperFrames 前置',
+    headline: '正在整理 HyperFrames 前置结构',
+    mini: 'HyperFrames',
+    message: '分镜已经整理成可交给 HyperFrames 的结构化数据，下一步可以直接进入渲染层。',
+  },
 };
 
 const templates = [
@@ -415,6 +452,7 @@ function renderScenarios() {
   el.previewTime.textContent = state.duration <= 30 ? '00:03 / 00:30' : state.duration <= 60 ? '00:04 / 01:00' : '00:06 / 01:30';
   el.payloadText.textContent = formatJson(state.payload);
   el.hyperframesText.textContent = formatJson(state.hyperframes);
+  updateWorkflowUI();
 }
 
 function syncForm() {
@@ -434,6 +472,7 @@ function buildLocalPlan(topic, meta) {
     brief: buildBrief(topic, meta),
     outline: buildOutline(topic, meta),
     scenes,
+    storyboard: scenes,
     payload: buildPayload(topic, meta, scenes),
     hyperframes: buildHyperframesConfig(meta, scenes, projectTitle),
   };
@@ -444,6 +483,7 @@ function applyPlan(plan, meta, source, errorMessage) {
   state.brief = plan.brief;
   state.outline = plan.outline;
   state.scenes = plan.scenes;
+  state.storyboard = plan.storyboard || plan.scenes || [];
   state.payload = plan.payload;
   state.hyperframes = plan.hyperframes;
   state.generationSource = source || 'local';
@@ -456,6 +496,44 @@ function applyPlan(plan, meta, source, errorMessage) {
   el.styleSelect.value = state.style;
   el.audienceSelect.value = state.audience;
   el.ratioSelect.value = state.ratio;
+}
+
+function updateWorkflowUI() {
+  const config = workflowLabels[state.workflowStage] || workflowLabels.input;
+  const stageOrder = ['input', 'brief', 'storyboard', 'hyperframes'];
+  const activeIndex = stageOrder.indexOf(state.workflowStage);
+
+  el.workflowHeadline.textContent = config.headline;
+  el.workflowStepPill.textContent = config.pill;
+  el.workflowMessage.textContent = config.message;
+  el.workflowMini.textContent = config.mini;
+
+  const sceneCount = state.scenes.length;
+  const sourceLabel =
+    state.generationSource === 'relay'
+      ? 'cc-relay 已回填'
+      : state.generationSource === 'local_fallback'
+        ? '本地草案兜底'
+        : state.generationSource === 'local_preview'
+          ? '本地预览'
+          : '等待生成';
+  const storyboardLabel = sceneCount ? `已生成 ${sceneCount} 个分镜卡片` : '尚未拆出分镜卡片';
+  el.workflowSummaryText.textContent = `${config.headline}。${storyboardLabel}。${sourceLabel}。`;
+
+  document.querySelectorAll('.workflow-step').forEach((node) => {
+    const stage = node.getAttribute('data-stage');
+    const index = stageOrder.indexOf(stage);
+    node.classList.toggle('is-active', stage === state.workflowStage);
+    node.classList.toggle('is-complete', index > -1 && index < activeIndex);
+  });
+}
+
+function setWorkflowStage(stage, detail = {}) {
+  state.workflowStage = stage;
+  const config = workflowLabels[stage] || workflowLabels.input;
+  state.workflowHeadline = detail.headline || config.headline;
+  state.workflowMessage = detail.message || config.message;
+  updateWorkflowUI();
 }
 
 function setGenerationBusy(isBusy, text) {
@@ -509,26 +587,49 @@ async function generate() {
     ratio: state.ratio,
   };
 
+  setWorkflowStage('brief', {
+    headline: '正在提炼需求',
+    message: '先从主题中抽出目标、受众、风格和节奏，随后再进入分镜生成。',
+  });
   const localPlan = buildLocalPlan(state.topic, meta);
   setGenerationBusy(true, '生成中');
   el.relayUrlLabel.textContent = state.relayUrl;
   applyPlan(localPlan, meta, 'local_preview', '');
+  setWorkflowStage('storyboard', {
+    headline: '已生成分镜草案',
+    message: `当前已经拆出 ${state.scenes.length} 个分镜卡片，接下来会对接 cc-relay 做结构校验。`,
+  });
   updateMetaInfo();
   renderScenarios();
   setGenerationBusy(false, '已保存');
   flashSaveState('本地预览');
 
+  setWorkflowStage('hyperframes', {
+    headline: '正在准备 HyperFrames 前置结构',
+    message: '分镜草案已经整理成可交给 HyperFrames 的 timeline 数据。',
+  });
   requestRemotePlan(buildGenerationRequest(state.topic, meta))
     .then((remote) => {
       const plan = remote?.plan || localPlan;
       applyPlan(plan, meta, remote?.source || 'local', remote?.error || '');
       el.relayUrlLabel.textContent = remote?.relay?.url || state.relayUrl;
+      setWorkflowStage(remote?.source === 'relay' ? 'hyperframes' : 'storyboard', {
+        headline: remote?.source === 'relay' ? 'HyperFrames 前置已准备好' : '分镜草案已完成',
+        message:
+          remote?.source === 'relay'
+            ? 'cc-relay 已回填最终分镜和结构化数据，可以直接进入 HyperFrames 生成层。'
+            : '本地分镜草案已完成，等待 relay 回填时也可以继续查看与编辑。',
+      });
       updateMetaInfo();
       renderScenarios();
       flashSaveState(remote?.source === 'relay' ? '已连接 cc-relay' : '本地回退');
     })
     .catch((error) => {
       applyPlan(localPlan, meta, 'local_fallback', error instanceof Error ? error.message : String(error));
+      setWorkflowStage('storyboard', {
+        headline: '分镜草案已生成',
+        message: 'cc-relay 暂时不可用，当前展示的是本地生成的分镜草案。',
+      });
       updateMetaInfo();
       renderScenarios();
       flashSaveState('本地回退');
@@ -718,6 +819,7 @@ function bootstrap() {
   renderHistory(state.topic);
   syncForm();
   attachEvents();
+  updateWorkflowUI();
   generate();
 }
 

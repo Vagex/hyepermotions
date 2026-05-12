@@ -354,6 +354,7 @@ function buildLocalPlan(input) {
     brief: buildBrief(topic, meta),
     outline: buildOutline(topic, meta),
     scenes,
+    storyboard: scenes,
     payload,
     hyperframes: buildHyperframesConfig(meta, scenes, projectTitle),
     relay: {
@@ -537,6 +538,7 @@ function normalizePlan(plan, fallback) {
     brief: plan.brief || fallback.brief,
     outline: Array.isArray(plan.outline) && plan.outline.length ? plan.outline : fallback.outline,
     scenes,
+    storyboard: Array.isArray(plan.storyboard) && plan.storyboard.length ? plan.storyboard : scenes,
     payload: fallback.payload,
     hyperframes: hyperframes || fallback.hyperframes,
     meta: {

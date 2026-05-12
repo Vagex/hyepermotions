@@ -6,7 +6,7 @@
     <title>Visora AI - 视频自动生成工作台</title>
     <meta
       name="description"
-      content="输入主题，自动提炼视频提纲、分镜脚本、cc-relay 请求体与 HyperFrames 生成配置。"
+      content="输入需求，自动提炼 brief 与分镜脚本，再输出给 HyperFrames 作为下一步生成基础。"
     />
     <link rel="stylesheet" href="./styles.css" />
     <script defer src="./app.js"></script>
@@ -68,7 +68,7 @@
           <div class="top-actions">
             <span class="auto-save" id="autoSaveState">已自动保存 14:32</span>
             <button class="ghost-btn" type="button" id="exportBtn">导出</button>
-            <button class="primary-btn" type="button" id="generateTopBtn">生成视频</button>
+            <button class="primary-btn" type="button" id="generateTopBtn">生成分镜</button>
           </div>
         </header>
 
@@ -77,10 +77,45 @@
             <article class="panel panel-hero">
               <div class="panel-head">
                 <div>
-                  <h2>输入主题或需求，AI 帮你生成视频</h2>
-                  <p>自动提炼成 brief、提纲、分镜、旁白和 HyperFrames 可执行结构。</p>
+                  <h2>输入需求，先生成 brief 和分镜</h2>
+                  <p>这一步是 HyperFrames 的前提。系统先把需求整理成可执行的分镜结构，再交给后续渲染层。</p>
                 </div>
                 <button class="mini-btn" type="button" id="optimizeBtn">智能优化</button>
+              </div>
+
+              <div class="workflow-card">
+                <div class="workflow-top">
+                  <div>
+                    <span class="workflow-kicker">流程状态</span>
+                    <strong id="workflowHeadline">等待输入需求</strong>
+                  </div>
+                  <span class="workflow-pill" id="workflowStepPill">输入需求</span>
+                </div>
+                <div class="workflow-track" id="workflowTrack">
+                  <div class="workflow-step is-active" data-stage="input">
+                    <span>01</span>
+                    <strong>输入需求</strong>
+                    <small>主题、受众、时长</small>
+                  </div>
+                  <div class="workflow-step" data-stage="brief">
+                    <span>02</span>
+                    <strong>需求提炼</strong>
+                    <small>brief 和方向</small>
+                  </div>
+                  <div class="workflow-step" data-stage="storyboard">
+                    <span>03</span>
+                    <strong>生成分镜</strong>
+                    <small>镜头、旁白、转场</small>
+                  </div>
+                  <div class="workflow-step" data-stage="hyperframes">
+                    <span>04</span>
+                    <strong>HyperFrames</strong>
+                    <small>等待渲染接入</small>
+                  </div>
+                </div>
+                <p class="workflow-note" id="workflowMessage">
+                  输入主题后，系统会先提炼 brief，再输出分镜卡片。
+                </p>
               </div>
 
               <label class="topic-box">
@@ -90,7 +125,7 @@
                   placeholder="例如：以“未来城市”为主题，展示科技与人文共融的城市生活，画面要有电影感、无人驾驶交通、绿色建筑、智能交互和温暖的人文场景。"
                 ></textarea>
                 <div class="topic-footer">
-                  <span>结构化输入更适合复杂主题，也支持一句话灵感。</span>
+                  <span>尽量写清目标、对象和想要的画面，系统会把它变成分镜。</span>
                   <span id="charCount">0/1000</span>
                 </div>
               </label>
@@ -151,22 +186,22 @@
               </div>
 
               <div class="cta-row">
-                <button class="primary-btn wide" type="button" id="generateBtn">生成视频</button>
+                <button class="primary-btn wide" type="button" id="generateBtn">生成分镜</button>
                 <span class="credit-note">消耗 60 积分</span>
               </div>
             </article>
 
             <article class="panel preview-panel">
               <div class="preview-tabs">
-                <button class="tab active" type="button">视频预览</button>
+                <button class="tab active" type="button">分镜预览</button>
                 <button class="tab" type="button">脚本</button>
-                <button class="tab" type="button">配音</button>
-                <button class="tab" type="button">音乐</button>
+                <button class="tab" type="button">旁白</button>
+                <button class="tab" type="button">HyperFrames</button>
               </div>
 
               <div class="preview-stage">
                 <div class="scene-copy">
-                  <span id="previewTag">科技 · 绿色 · 人文 · 希望</span>
+                  <span id="previewTag">分镜 · 预览 · 镜头节奏</span>
                   <h3 id="previewHeadline">在科技与人文的共融中，未来城市正向我们走来</h3>
                 </div>
                 <div class="scene-media">
@@ -193,14 +228,22 @@
 
           <aside class="inspector">
             <div class="inspector-tabs">
-              <button class="tab active" type="button">AI 生成方案</button>
+              <button class="tab active" type="button">分镜方案</button>
               <button class="tab" type="button">大纲</button>
               <button class="tab" type="button">场景列表</button>
             </div>
 
+            <article class="info-card workflow-summary">
+              <div class="card-title">
+                <h3>当前步骤</h3>
+                <span class="workflow-mini" id="workflowMini">输入需求</span>
+              </div>
+              <p id="workflowSummaryText">等待输入需求，之后会先生成 brief，再拆成分镜。</p>
+            </article>
+
             <article class="info-card">
               <div class="card-title">
-                <h3>视频创意简述</h3>
+                <h3>需求简述</h3>
                 <button class="copy-btn" type="button" data-copy="brief">复制</button>
               </div>
               <p id="briefText"></p>
@@ -208,7 +251,7 @@
 
             <article class="info-card">
               <div class="card-title">
-                <h3>视频大纲</h3>
+                <h3>分镜大纲</h3>
                 <button class="copy-btn" type="button" data-copy="outline">复制</button>
               </div>
               <ol class="outline-list" id="outlineList"></ol>
@@ -216,7 +259,7 @@
 
             <article class="info-card scenes-card">
               <div class="card-title">
-                <h3>场景列表 <span id="sceneCountLabel">(3)</span></h3>
+                <h3>分镜卡片 <span id="sceneCountLabel">(3)</span></h3>
                 <button class="mini-btn small" type="button" id="addSceneBtn">+ 添加场景</button>
               </div>
               <div class="scenes" id="sceneList"></div>
@@ -225,7 +268,7 @@
 
             <article class="info-card relay-preview">
               <div class="card-title">
-                <h3>cc-relay 请求体</h3>
+                <h3>分镜 JSON</h3>
                 <button class="copy-btn" type="button" data-copy="payload">复制 JSON</button>
               </div>
               <pre id="payloadText"></pre>
@@ -233,7 +276,7 @@
 
             <article class="info-card relay-preview">
               <div class="card-title">
-                <h3>HyperFrames 生成参数</h3>
+                <h3>HyperFrames 草案</h3>
                 <button class="copy-btn" type="button" data-copy="hyperframes">复制</button>
               </div>
               <pre id="hyperframesText"></pre>
